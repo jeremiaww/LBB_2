@@ -1,0 +1,314 @@
+---
+title: "Learn by Building 2: Data Visualization"
+author: "Jeremia Widyanto"
+date: "May 22, 2022"
+output:
+  html_document:
+    theme: cosmo
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: true
+    number_sections: true
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+# clear-up the environment
+rm(list = ls())
+
+# chunk options
+knitr::opts_chunk$set(
+  fig.align = "center",
+  message = FALSE,
+  warning = FALSE,
+  comment = "#>"
+)
+```
+
+<style>
+body {
+text-align: justify}
+</style>
+
+# Introduction
+
+## Tujuan Pelatihan
+
+Tujuan utama dari kursus ini adalah untuk memberikan pengenalan yang komprehensif untuk data visualization dengan menggunakan data yang ada. 
+
+Visualisasi Data adalah tampilan data dan informasi dalam bentuk grafis atau visual. Contoh bentuk grafis atau visualnya seperti peta, diagram / grafik, bagan / struktur. Salah satu kegunaan visualisasi data adalah untuk mempermudah komunikasi antara penyedia data (provider) dengan pengguna data (reciever/user). Dimana penyedia akan memberikan informasi - informasi penting sesuai dengan kepentingan / bisnisnya, yang perlu diperhatikan dalam menampilkan data nya adalah bila pengguna data dapat memahami visualisasi tersebut dengan mudah dimengerti dan secara cepat.
+
+# Explanatory Data Analysis
+
+## Import Data & Library
+
+```{r}
+library(ggplot2)
+library(scales)
+library(carData)
+library(dplyr)
+library(ggridges)
+data(Salaries,
+     package = "carData")
+```
+
+Data yang digunakan menggunakan Packages 'carData', dengan data Salaries:
+
+Dimana merupakan data academic salary untuk Assistant Professors, Associate Professors, dan Professor di kampus-kampus U.S.
+Terdiri dari 4 variable: 
+
+- rank: Jenis jabatannya
+
+- discipline: Penilaian dari Discipline
+
+- yrs.since.phd: Lama tahun sejak menjadi PhD
+
+- yrs.service: Lama tahun mengajar
+
+- sex: Jenis Kelamin
+
+- salary: Gaji nya
+
+Melihat data dari 'Salaries':
+```{r}
+Salaries
+```
+Melihat sturktur data dari 'Salaries':
+```{r}
+str(Salaries)
+```
+> Terdiri dari 397 observasi dan 6 variables, Tipe data yang digunakan juga sudah sesuai.
+
+## Missing Data
+
+Melakukan cek Missing Data dari 'Salaries':
+```{r}
+colSums(is.na(Salaries))
+```
+> Tidak ada missing value, sehingga data sudah bisa digunakan untuk tahap selanjutnya.
+
+## Subseting Data
+
+Mengganti keterangan di Rank, sehingga tidak berupa singkatan.
+```{r}
+Salaries_clean <- Salaries %>%
+  mutate(rank = ifelse(rank == "Prof", "Full Professor",
+                       ifelse(rank == "AsstProf", "Assistant Professor", "Associate Professor")))
+Salaries_clean
+```
+
+# Data Visualization
+
+1. Melihat Jumlah Data dari variable 'rank', dan melihat urutan datanya dari yang tertinggi dengan menggunakan Diagram Batang atau 'geom_bar':
+```{r}
+plot_bar <- Salaries_clean %>% 
+  count(rank) %>% 
+  mutate(pct = n / sum(n),
+         pctlabel = paste0(round(pct*100), "%"))
+
+ggplot(plot_bar,
+       aes(x = reorder(rank, -pct),
+           y = pct)) +
+  geom_bar(stat = "identity",
+           fill = rainbow(3),
+           color = "azure4") +
+  geom_text(aes(label = pctlabel),
+                vjust = -0.25) +
+  theme_minimal() +
+  labs(x = "Rank",
+       y = "Frequency",
+       title = "Sorting & Labeling Participants by Rank") +
+  theme(axis.text.x = element_text(angle = 45,
+                                   hjust = 1))
+```
+Membuat Table rank:
+```{r}
+Salaries_col <- as.data.frame(table(Salaries_clean$rank))
+Salaries_col
+```
+
+Diagram Batang untuk menggunakan 'geom_col' dan mengubah sumbu x dan sumbu y nya.
+```{r}
+ggplot(Salaries_col,
+       aes(x = Freq,
+           y = reorder(Var1, Freq))) +
+  geom_col(aes(fill = Freq)) +
+  scale_fill_gradient(low = "orange", high = "red") +
+  geom_text(aes(label = Freq),
+            color = "black",
+            size = 3,
+            nudge_x = 5) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(x = "Frequency",
+       y = "Rank",
+       title = "Sorting & Labeling Participants by Rank")
+```
+Insight yang dapat diambil dari visualisasi diatas:
+> Urutan dari participant berdasarkan rank adalah
+  - Full Professor berjumlah 266 orang (67%)
+  - Assistant Professor berjumlah 67 orang (17%)
+  - Associate Professor berjumlah 64 orang (16%)
+  
+2. Melihat grafik yang menampilkan data rata-rata gaji berdasarkan jabatan akademiknya
+```{r}
+plot_bar1 <- Salaries_clean %>% 
+  group_by(rank) %>% 
+  dplyr::summarize(mean_salary = mean(salary))
+
+ggplot(plot_bar1,
+       aes(x = factor(rank,
+                      labels = c("Assistant Professor", "Associate Professor", "Full Professor")),
+           y = mean_salary)) +
+  geom_bar(stat = "identity",
+           fill = rainbow(3)) +
+  geom_text(aes(label = dollar(mean_salary)),
+            vjust = -0.25) +
+  scale_y_continuous(breaks = seq(0, 130000, 20000),
+                     label = dollar) +
+  theme_minimal() +
+  labs(title = "Mean Salary by Rank",
+       subtitle = "9-month academic salary for 2008-2009",
+       x = NULL,
+       y = NULL)
+```
+Insight yang dapat diambil:
+> Range / kisaran rata- rata gaji dari jabatan Assistant Professor adalah $80,776
+
+> Range / kisaran rata- rata gaji dari jabatan Associate Professor adalah $93,876
+
+> Range / kisaran rata- rata gaji dari jabatan Full Professor adalah $126,772
+
+3. Melihat distribusi data gaji berdasarkan jabatan yang dikelompokkan, menggunakan plot densitas kernel:
+```{r}
+ggplot(Salaries_clean,
+       aes(x = salary,
+           fill = rank)) +
+  geom_density(alpha = 0.5) +
+  theme_minimal() +
+  labs(title = "Salary Distribution by Rank (Densitas Kernel)")
+```
+Opsi 'alpha' dalam plot densitas menjadi sebagian transparan sehingga kita dapat melihat bagian yang bertumpukan.
+
+Insight yang dapat diambil:
+> Bahwa gaji akan meningkat sesuai jabatannya
+
+4. Melihat distribusi data gaji berdasarkan jabatan yang dikelompokkan, menggunakan boxplot:
+```{r}
+ggplot(Salaries_clean,
+       aes(x = rank,
+           y = salary)) +
+  geom_boxplot(notch = TRUE,
+               fill = rainbow(3),
+               alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Salary Distribution by Rank (Boxplot)")
+```
+Insight yang dapat diambil:
+> Bahwa rata-rata gaji akan meningkat sesuai jabatannya, dapat dilihat dari garis tengah yang berada di dalam box nya.
+> Untuk beberapa titik yang berada di variable Full Professor merupakan titik outlier/pencilan dimana data yang extreme.
+
+5. Melihat data rata-rata gaji berdasarkan jabatan dan jenis kelamin menggunakan Diagram Garis.
+```{r}
+plot_line1 <- Salaries_clean %>% 
+  group_by(rank, sex) %>% 
+  dplyr::summarize(n = n(),
+                   mean = mean(salary),
+                   sd = sd(salary),
+                   se = sd/sqrt(n),
+                   ci = qt(0.975, df = n - 1) * sd / sqrt(n))
+
+pd <- position_dodge(0.2)
+
+ggplot(plot_line1,
+       aes(x = factor(rank,
+                      labels = c("Assistant Professor", "Associate Professor", "Full Professor")),
+           y = mean,
+           group = sex,
+           color = sex)) +
+  geom_point(position = pd,
+             size = 3) +
+  geom_line(position = pd,
+            size = 1) +
+  geom_errorbar(aes(ymin = mean - se,
+                    ymax = mean + se),
+                width = 0.1,
+                position = pd,
+                size = 1) +
+  scale_y_continuous(labels = scales::dollar) +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Mean Salary by rank & sex",
+       subtitle = "(mean +/- standard error)",
+       x = NULL,
+       y = NULL,
+       color = "Gender")
+```
+Insight yang dapat diambil:
+> Grafik diatas dapat menampilkan data rata-rata gaji dari setiap jabatan dan gender, dengan tambahan +- dari standard error nya.
+
+6. Melihat distribusi gaji berdasarkan jabatan menggunakan plot strip dan jitter.
+```{r}
+ggplot(Salaries_clean,
+       aes(x = factor(rank,
+                      labels = c("Assistant Professor", "Associate Professor", "Full Professor")),
+           y = salary,
+           color = rank)) +
+  geom_boxplot(size = 1,
+               outlier.alpha = 1,
+               outlier.color = "black",
+               outlier.size = 3) +
+  geom_jitter(alpha = 0.5,
+              width = 0.2) +
+  scale_y_continuous(label = dollar) +
+  labs(title = "Mean Salary by Rank",
+       subtitle = "9-month academic salary for 2008-2009",
+       x = NULL,
+       y = NULL) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  coord_flip()
+```
+Insight yang dapat diambil:
+> Grafik diatas dapat menampilkan data rata-rata gaji dari setiap jabatan dan gender, dengan tambahan outlier yang terdapat hanya di jabatan "Full Professor".
+
+7. Melihat hubungan data antara salary, years since PhD, rank, dan jenis kelamin
+```{r}
+ggplot(Salaries_clean,
+       aes(x = yrs.since.phd,
+           y = salary,
+           color = rank,
+           shape = sex)) +
+  geom_point(size = 3,
+             alpha = 0.6) +
+  scale_y_continuous(labels = scales::dollar) +
+  theme_minimal() +
+  labs(title = "Academic Salary by Rank, Sex, & Years since degree (PhD)",
+       x = "Year Since Degree",
+       y = NULL)
+```
+Insight yang dapat diambil:
+> Grafik diatas dapat menampilkan distribusi data gaji dari setiap jabatan, gender, dan lamanya tahun setelah mendapatkan gelar PhD.
+
+8. Melihat hubungan antara tahun sejak mendapatkan gelar PhD dan gaji dan masa kerja.
+```{r}
+ggplot(Salaries_clean,
+       aes(x = yrs.since.phd,
+           y = salary,
+           color = rank,
+           size = yrs.service)) +
+  geom_point(alpha = 0.8) +
+  scale_y_continuous(labels = scales::dollar) +
+  theme_minimal() +
+  labs(title = "Academic Salary by Rank, Sex, Years of Service & Years since degree (PhD)",
+       x = "Year Since Degree",
+       y = NULL)
+
+```
+Insight yang dapat diambil:
+> Grafik diatas dapat menampilkan distribusi data gaji dari setiap jabatan, masa kerja, dan lamanya tahun setelah mendapatkan gelar PhD.
+
+# Conclusion
+
+Data Visualization dapat berguna dalam menampilkan informasi dan data secara menarik. Sehingga selain dapat beberapa insight, data visualization ini berguna untuk mengambil keputusan untuk tahapan selanjutnya.
